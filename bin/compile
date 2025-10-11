@@ -28,14 +28,31 @@ if [ -d "$ENV_DIR" ]; then
   done
 fi
 
-# Allow Bun version pinning via a choice of 3 different files
-if [ -f $BUILD_DIR/.bun-version ]
+# Allow Bun version pinning via a choice of 4 different methods
+# 1. Check packageManager field in package.json
+if [ -f $BUILD_DIR/package.json ]
+then
+  PACKAGE_MANAGER=$(grep '"packageManager"' $BUILD_DIR/package.json | sed 's/.*"packageManager": *"//' | sed 's/".*//')
+  if [[ $PACKAGE_MANAGER =~ ^bun@ ]]
+  then
+    BUN_VERSION="${PACKAGE_MANAGER#bun@}"
+  fi
+fi
+
+# 2. Check .bun-version file
+if [[ -z $BUN_VERSION && -f $BUILD_DIR/.bun-version ]]
 then
   BUN_VERSION="$(cat $BUILD_DIR/.bun-version)"
-elif [ -f $BUILD_DIR/runtime.bun.txt ]
+fi
+
+# 3. Check runtime.bun.txt file
+if [[ -z $BUN_VERSION && -f $BUILD_DIR/runtime.bun.txt ]]
 then
   BUN_VERSION="$(cat $BUILD_DIR/runtime.bun.txt)"
-elif [ -f $BUILD_DIR/runtime.txt ]
+fi
+
+# 4. Check runtime.txt file
+if [[ -z $BUN_VERSION && -f $BUILD_DIR/runtime.txt ]]
 then
   BUN_VERSION="$(cat $BUILD_DIR/runtime.txt)"
 fi
@@ -100,4 +117,3 @@ then
   echo "Running Heroku postbuild script..."
   bun run heroku-postbuild
 fi
-
