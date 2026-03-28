@@ -85,35 +85,42 @@ echo "export BUN_DIR=\"$BUILD_DIR/.heroku/cache\"" >> "$BP_DIR/export"
 
 echo "Installed Bun v$(bun --version)"
 
-set +e
-
 cd $BUILD_DIR
 
-# download dependencies
-if [[ -f package.json && ! -f .skip-bun-install ]]
+# Skip install and build steps when another buildpack (e.g. Ruby asset
+# pipeline) will handle them. Set SKIP_BUN_BUILD=1 or create .skip-bun-build.
+if [[ "$SKIP_BUN_BUILD" == "1" || -f .skip-bun-build ]]
 then
-  echo "Installing dependencies..."
-  bun install
-fi
+  echo "Skipping bun install/build (SKIP_BUN_BUILD is set)"
+else
+  set +e
 
-has_heroku_prebuild_script=$(has_script "package.json" "heroku-prebuild")
-if [[ "$has_heroku_prebuild_script" == "true" && ! -f .skip-bun-heroku-prebuild ]]
-then
-  echo "Running Heroku prebuild script..."
-  bun run heroku-prebuild
-fi
+  # download dependencies
+  if [[ -f package.json && ! -f .skip-bun-install ]]
+  then
+    echo "Installing dependencies..."
+    bun install
+  fi
 
-has_build_script=$(has_script "package.json" "build")
-if [[ "$has_build_script" == "true" && ! -f .skip-bun-build ]]
-then
-  echo "Building application..."
-  bun run build
-  echo "Done building application..."
-fi
+  has_heroku_prebuild_script=$(has_script "package.json" "heroku-prebuild")
+  if [[ "$has_heroku_prebuild_script" == "true" && ! -f .skip-bun-heroku-prebuild ]]
+  then
+    echo "Running Heroku prebuild script..."
+    bun run heroku-prebuild
+  fi
 
-has_heroku_postbuild_script=$(has_script "package.json" "heroku-postbuild")
-if [[ "$has_heroku_postbuild_script" == "true" && ! -f .skip-bun-heroku-postbuild ]]
-then
-  echo "Running Heroku postbuild script..."
-  bun run heroku-postbuild
+  has_build_script=$(has_script "package.json" "build")
+  if [[ "$has_build_script" == "true" && ! -f .skip-bun-build ]]
+  then
+    echo "Building application..."
+    bun run build
+    echo "Done building application..."
+  fi
+
+  has_heroku_postbuild_script=$(has_script "package.json" "heroku-postbuild")
+  if [[ "$has_heroku_postbuild_script" == "true" && ! -f .skip-bun-heroku-postbuild ]]
+  then
+    echo "Running Heroku postbuild script..."
+    bun run heroku-postbuild
+  fi
 fi
